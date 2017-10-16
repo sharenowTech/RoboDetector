@@ -19,8 +19,6 @@ while True:
     _, contours, _ = cv2.findContours(fgmask, cv2.RETR_TREE,
                                       cv2.CHAIN_APPROX_SIMPLE)
     cv2.drawContours(frame, contours, -1, (100, 0, 255), 2)
-    cv2.fill
-
     cv2.imshow('frame', frame)
     k = cv2.waitKey(30) & 0xff
     if k == 27:
