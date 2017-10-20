@@ -5,6 +5,7 @@
 *.JPG
 *.png
 *.mov
+*.svg
 
 ### Python template
 # Byte-compiled / optimized / DLL files
