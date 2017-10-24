@@ -1,6 +1,7 @@
 import threading
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 from robodetect.Constants import ESC, RED_BGR
 from robodetect.Detection import calculate_perspective_warp
 from robodetect.Detection import detect_moving_object_on_raw_image
@@ -41,11 +42,15 @@ class GetSrcPoints(threading.Thread):
         _4_src_points = [[448,393], [667,389], [731,565], [423,571]]
 
 
+
 def main():
+    ok, frame = stream.read()
+
     # init
     getSrcPoints = GetSrcPoints()
     getSrcPoints.start()
-    # TODO: code for showing frame
+    plt.imshow(frame)
+    plt.show()
     getSrcPoints.join()
 
     warp_matrix = calculate_perspective_warp(
@@ -53,7 +58,7 @@ def main():
         [[0,0],[dst_width,0],[dst_width, dst_height],[0,dst_height]]
     )
 
-    ok, frame = stream.read()
+
     # main loop, reading and processing image from stream
     while stream.isOpened():
         prev_frame = frame
