@@ -1,63 +1,61 @@
 import threading
 import cv2
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 from robodetect.Constants import ESC, RED_BGR
+from robodetect.Constants import DST_WIDTH, DST_HEIGHT, AREA_THRESH
 from robodetect.Detection import calculate_perspective_warp
 from robodetect.Detection import detect_moving_object_on_raw_image
-from robodetect.Detection import warp_image
 from robodetect.Detection import get_image_coordinates_of_objects
-
+from robodetect.Detection import warp_image
 
 # globals
-stream = cv2.VideoCapture('playground/robo_on_paper.mov')
+# reads from camera stream
+stream = cv2.VideoCapture(0)
 bg_subtractor = cv2.createBackgroundSubtractorMOG2(
-    history=1000, varThreshold=400.0
+    history=500, varThreshold=400.0
 )
 close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-dst_width = 1000
-dst_height = 1414
 M = np.ones((3,3))
-_4_src_points = []
+four_src_points = []
 
-class GetSrcPoints(threading.Thread):
-    # TODO: integrate plt.show
+
+class InputPoints(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        global _4_src_points
-        _4_src_points = []
+        global four_src_points
+        four_src_points = []
 
-    # uncomment to provide input points via CL
-    """
     def run(self):
-        print('Provide 4 points from source image')
-        for i in range(4):
-            print('Point {}:'.format(i))
+        print('Provide 4 points from the source image. '
+              'Those are used to calculate the perspective warp matrix')
+
+        for point in range(4):
+            print('Point {}:'.format(point))
             x = input('x ')
             y = input('y ')
-            _4_src_points.append([x, y])
-    """
-    def run(self):
-        global _4_src_points
-        _4_src_points = [[448,393], [667,389], [731,565], [423,571]]
+            four_src_points.append([x, y])
 
-
+def input_points_and_show_image(image: np.ndarray):
+    # we need to create a child thread, because plt.show() blocks program
+    # execution until the window is closed, but we want to be able to specify
+    # points from the image while having the window opened.
+    input_points = InputPoints()
+    input_points.start()
+    plt.imshow(image)
+    plt.show()
+    input_points.join()
 
 def main():
     ok, frame = stream.read()
 
     # init
-    getSrcPoints = GetSrcPoints()
-    getSrcPoints.start()
-    plt.imshow(frame)
-    plt.show()
-    getSrcPoints.join()
-
+    input_points_and_show_image(frame)
     warp_matrix = calculate_perspective_warp(
-        _4_src_points,
-        [[0,0],[dst_width,0],[dst_width, dst_height],[0,dst_height]]
+        four_src_points,
+        [[0,0], [DST_WIDTH, 0], [DST_WIDTH, DST_HEIGHT], [0, DST_HEIGHT]]
     )
-
 
     # main loop, reading and processing image from stream
     while stream.isOpened():
@@ -66,22 +64,25 @@ def main():
         if not ok:
             frame = prev_frame
 
-        warped_frame = warp_image(frame, dst_width, dst_height, warp_matrix)
+        warped_frame = warp_image(frame, DST_WIDTH, DST_HEIGHT, warp_matrix)
 
         objects = detect_moving_object_on_raw_image(
-            frame, dst_width, dst_height,
+            frame, DST_WIDTH, DST_HEIGHT,
             warp_matrix, bg_subtractor, close_kernel,
-            area_threshold=17000.0
+            area_threshold=AREA_THRESH
         )
 
         object_coordinates = get_image_coordinates_of_objects(objects)
 
         for position in object_coordinates:
             cv2.drawMarker(warped_frame, position, RED_BGR)
+
+        # uncomment to show the detected object contours
         # cv2.drawContours(warped_frame, objects, -1, RED_BGR, 2)
         # show result
         cv2.imshow('processed', warped_frame)
 
+        # break loop when ESC is pressed
         if cv2.waitKey(30) & 0xff == ESC:
             break
 
