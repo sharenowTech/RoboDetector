@@ -1,4 +1,5 @@
 import pyproj
+import numpy as np
 from numbers import Number
 
 
@@ -32,6 +33,20 @@ bottomright = (bottomleft[0] + width_x_bottom, bottomright[1])
 maxlon_, minlat_ = proj(*bottomright, inverse=True)
 minlon_, maxlat_ = proj(*topleft, inverse=True)
 
+bounds_lat_lon = {
+    'minlat': minlat_,
+    'minlon': minlon_,
+    'maxlat': maxlat_,
+    'maxlon': maxlon_
+}
+
+bounds_pixel = {
+    'xmin': 0,
+    'xmax': 1000,
+    'ymin': 0,
+    'ymax': 1000
+}
+
 
 class Projector(object):
     def __init__(self,
@@ -55,12 +70,21 @@ class Projector(object):
         self.trans_x = xmin
         self.trans_y = ymin
 
+
     def pixel_coordinate_to_lon_lat(self, x: Number, y: Number):
         x_ = self.scale_x * x + self.trans_x
         y_ = self.scale_y * y + self.trans_y
 
         return self.proj(x_, y_, inverse=True)
 
+
+    def distance(self, point1: dict, point2: dict):
+        p1_cart = np.array([self.proj(point1['lon'], point1['lat'])])
+        p2_cart = np.array([self.proj(point2['lon'], point2['lat'])])
+        return np.linalg.norm(p1_cart-p2_cart)
+
+
+hackathon_projector = Projector(bounds_lat_lon, bounds_pixel)
 
 if __name__ == '__main__':
     for x_y in [topleft, topright, bottomleft, bottomright]:
@@ -69,25 +93,8 @@ if __name__ == '__main__':
     for coordinate in [minlat_, maxlat_, minlon_, maxlon_]:
         print(coordinate)
 
-    bounds_lat_lon = {
-        'minlat': minlat_,
-        'minlon': minlon_,
-        'maxlat': maxlat_,
-        'maxlon': maxlon_
-    }
-
-    bounds_pixel = {
-        'xmin': 0,
-        'xmax': 1000,
-        'ymin': 0,
-        'ymax': 1000
-    }
-
-    projector = Projector(
-        bounds_lat_lon, bounds_pixel
-    )
 
     # test lat-lon-calculation
     for x, y in [[0,0], [1000,0], [1000,1000], [0,1000]]:
-        print(projector.pixel_coordinate_to_lon_lat(x, y))
+        print(hackathon_projector.pixel_coordinate_to_lon_lat(x, y))
 
