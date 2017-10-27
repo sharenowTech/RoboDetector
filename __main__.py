@@ -4,15 +4,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from robodetect.Constants import ESC, RED_BGR
-from robodetect.Constants import DST_WIDTH, DST_HEIGHT, AREA_THRESH
+from robodetect.Constants import DST_WIDTH, DST_HEIGHT, AREA_THRESH, ROBO_ON_PAPER_SRC_POINTS
 from robodetect.Detection import calculate_perspective_warp
 from robodetect.Detection import detect_moving_object_on_raw_image
 from robodetect.Detection import get_image_coordinates_of_objects
 from robodetect.Detection import warp_image
+from robodetect.Projection import Projector, bounds_lat_lon
 
 # globals
 # reads from camera stream
-stream = cv2.VideoCapture(0)
+stream = cv2.VideoCapture(1)
 bg_subtractor = cv2.createBackgroundSubtractorMOG2(
     history=500, varThreshold=400.0
 )
@@ -20,6 +21,15 @@ close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
 M = np.ones((3,3))
 four_src_points = []
 
+hackathon_projector = Projector(
+    bounds_lat_lon,
+    {
+        'xmin': 0,
+        'xmax': DST_WIDTH,
+        'ymin': 0,
+        'ymax': DST_HEIGHT
+    }
+)
 
 class InputPoints(threading.Thread):
     def __init__(self):
@@ -41,11 +51,16 @@ def input_points_and_show_image(image: np.ndarray):
     # we need to create a child thread, because plt.show() blocks program
     # execution until the window is closed, but we want to be able to specify
     # points from the image while having the window opened.
+
     input_points = InputPoints()
     input_points.start()
     plt.imshow(image)
     plt.show()
     input_points.join()
+    """
+    global four_src_points
+    four_src_points = ROBO_ON_PAPER_SRC_POINTS
+    """
 
 def main():
     ok, frame = stream.read()
@@ -77,6 +92,13 @@ def main():
         for position in object_coordinates:
             cv2.drawMarker(warped_frame, position, RED_BGR)
 
+
+        lon_lat = [
+            hackathon_projector.pixel_coordinate_to_lon_lat(*coord)
+            for coord in object_coordinates
+        ]
+
+        print(lon_lat)
         # uncomment to show the detected object contours
         # cv2.drawContours(warped_frame, objects, -1, RED_BGR, 2)
         # show result
@@ -85,6 +107,8 @@ def main():
         # break loop when ESC is pressed
         if cv2.waitKey(30) & 0xff == ESC:
             break
+
+
 
 
 if __name__ == '__main__':
