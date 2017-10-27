@@ -75,7 +75,8 @@ class Projector(object):
         x_ = self.scale_x * x + self.trans_x
         y_ = self.scale_y * y + self.trans_y
 
-        return self.proj(x_, y_, inverse=True)
+        lon, lat = self.proj(x_, y_, inverse=True)
+        return {'lat': lat, 'lon': lon}
 
 
     def distance(self, point1: dict, point2: dict):
